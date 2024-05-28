@@ -1,0 +1,106 @@
+﻿@page "/editbooks/{id:guid}"
+@rendermode InteractiveServer
+@using BookInventory.Common
+@using BookInventory.Data
+@using System.ComponentModel.DataAnnotations
+
+@using BookInventory.Dtos
+@using BookInventory.Service
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+@using Syncfusion.Blazor.DropDowns
+
+
+<PageTitle>Edit book</PageTitle>
+
+<dialog open>
+    <h3>Edit Book</h3>
+    <EditForm Model="NewBook" FormName="EditBook" OnValidSubmit="HandleValidSubmit">
+         <DataAnnotationsValidator />
+
+        <div class="form-group">
+            <label for="title">Title:</label>
+            <InputText id="title" class="form-control" @bind-Value="NewBook!.Title" />
+            <ValidationMessage For="@(() => NewBook.Title)" />
+        </div>
+
+        <div class="form-group">
+            <label for="author">Author:</label>
+            <InputText id="author" class="form-control" @bind-Value="NewBook!.Author" />
+            <ValidationMessage For="@(() => NewBook.Author)" />
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" class="btn" @onclick="()=>OnClose()">Close</button>
+    </EditForm>
+</dialog>
+@code {
+    [Inject]
+    protected IBookService BookService { get; set; }
+
+    [Inject]
+    protected NavigationManager navigationManager { get; set; }
+
+    [Parameter]
+    public Guid id { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OnSubmit { get; set; }
+
+    [SupplyParameterFromForm]
+    protected EditBookModel NewBook { get; set; } = new EditBookModel();
+
+    protected override async Task OnInitializedAsync()
+    {
+        base.OnInitialized();
+        var book = await BookService.GetBookById(id);
+        NewBook = new EditBookModel()
+            {
+                Id = id,
+                Title = book.Name,
+                Author = book.Author,
+                bookStatus = book.Status
+            };
+
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var book = new BookDto
+        {
+            Id = NewBook.Id,
+            Name = NewBook.Title,
+            Author = NewBook.Author,
+            Status = NewBook.bookStatus
+        };
+        var result = await BookService.EditBook(book);
+        if (result)
+        {
+            navigationManager.NavigateTo($"/books");
+        }
+    }
+
+    private void OnClose()
+    {
+        navigationManager.NavigateTo($"/books");
+    }
+
+    public class EditBookModel
+    {
+        public Guid Id { get; set; }
+
+        [Required(ErrorMessage = "Title is required")]
+        public string Title { get; set; }
+
+        [Required(ErrorMessage = "Author is required")]
+        public string Author { get; set; }
+
+        public BookStatus bookStatus { get; set; }
+
+    }
+}

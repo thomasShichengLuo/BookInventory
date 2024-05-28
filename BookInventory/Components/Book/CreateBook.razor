@@ -1,0 +1,80 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using BookInventory.Common
+@using BookInventory.Service
+@using BookInventory.Dtos
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.JSInterop
+
+<div style="border:1px solid black">
+<h3>Create New Book</h3>
+    <EditForm Model="NewBook" FormName="AddBook" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+
+    <div class="form-group">
+        <label for="title">Title:</label>
+            <InputText id="title" class="form-control" @bind-Value="NewBook!.Title" />
+            <ValidationMessage For="@(() => NewBook.Title)" />
+    </div>
+
+    <div class="form-group">
+        <label for="author">Author:</label>
+            <InputText id="author" class="form-control" @bind-Value="NewBook!.Author" />
+            <ValidationMessage For="@(() => NewBook.Author)" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Add</button>
+
+</EditForm>
+</div>
+@code {
+    [Inject]
+    protected IBookService BookService { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public EventCallback<bool> OnSubmit { get; set; }
+
+    [SupplyParameterFromForm]
+    protected BookModel NewBook { get; set; }
+
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized(); 
+        NewBook ??= new();
+
+    }
+
+    private void OnTitleInput(string value)
+    {
+
+        NewBook.Title = value;
+    }
+
+    private void OnAuthorInput(string value)
+    {
+
+        NewBook.Author = value;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var book = new BookDto()
+            {
+                Name = NewBook.Title,
+                Author = NewBook.Author
+            };
+        var response = await BookService.CreateBook(book);
+        if (response)
+        {
+            NewBook = new();
+            await OnSubmit.InvokeAsync(response);
+        }
+    }
+
+    
+}

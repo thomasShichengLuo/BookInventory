@@ -1,0 +1,155 @@
+﻿@page "/borrowing"
+@rendermode InteractiveServer
+
+@using BookInventory.Dtos
+@using BookInventory.Service
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+
+@attribute [Authorize]
+
+<PageTitle>Borrowing System</PageTitle>
+
+<AuthorizeView>
+    Hello @context.User.Identity?.Name!
+</AuthorizeView>
+<h1>Borrowed book list</h1>
+
+@if (BorrowedBooks != null && BorrowedBooks.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var book in BorrowedBooks)
+            {
+                <tr>
+                    <td>@book.Id</td>
+                    <td>@book.Name</td>
+                    <td>@book.Author</td>
+                    <td>@book.Status</td>
+                    <td>
+                        <button id="Edit_@book.Id" class="btn btn-primary" @onclick="() => OnReturnBook(book.Id)">Return</button>
+     
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h1>Availible book list</h1>
+
+@if (AvailibleBooks != null && AvailibleBooks.Any())
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Status</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var book in AvailibleBooks)
+            {
+                <tr>
+                    <td>@book.Id</td>
+                    <td>@book.Name</td>
+                    <td>@book.Author</td>
+                    <td>@book.Status</td>
+                    <td>
+                        <button id="Edit_@book.Id" class="btn btn-primary" @onclick="() => OnBorrowBook(book.Id)">Borrow</button>
+                       
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code{
+    [Inject]
+    protected IBookService BookService { get; set; }
+
+    [Inject]
+    protected IBorrowingService BorrowingService { get; set; }
+
+    [Inject]
+    protected NavigationManager navigationManager { get; set; }
+
+    [Inject]
+    protected AuthenticationStateProvider AuthenticationStateProvider { get; set; }
+
+    private List<BookDto> AvailibleBooks { get; set; } = new List<BookDto>();
+    private List<BookDto> BorrowedBooks { get; set; } = new List<BookDto>();
+    private string UserEmail { get; set; }
+
+
+    protected async Task OnBorrowBook(Guid bookId)
+    {
+        var result = await BorrowingService.BorrowingBook(bookId, UserEmail);
+        if (result)
+        {
+            await OnReloadBooks();
+        }
+    }
+
+    protected async Task OnReturnBook(Guid bookId)
+    {
+        var result = await BorrowingService.ReturnBook(bookId, UserEmail);
+        if (result)
+        {
+            await OnReloadBooks();
+        }
+    }
+
+    
+
+    protected async Task OnDeleteBook(Guid bookId)
+    {
+        var result = await BookService.DeleteBook(bookId);
+        if (result)
+        {
+            await OnReloadBooks();
+        }
+
+    }
+
+    protected async Task OnReloadBooks()
+    {
+        AvailibleBooks = await BookService.GetBooks();
+        BorrowedBooks = await BorrowingService.BorrowedBooks(UserEmail);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        UserEmail = GetClaimsPrincipal();
+        await OnReloadBooks();
+
+    }
+
+    private string GetClaimsPrincipal()
+    {
+        var task = Task.Run(async () => await AuthenticationStateProvider.GetAuthenticationStateAsync());
+
+        task.Wait();
+
+        var authState = task.Result;
+        var email = authState.User.Identity?.Name;
+
+        return email;
+    }
+
+}
+
+

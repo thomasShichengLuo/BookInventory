@@ -1,0 +1,96 @@
+﻿@page "/books"
+@rendermode InteractiveServer
+@using BookInventory.Dtos
+@using BookInventory.Service
+@using Microsoft.AspNetCore.Authorization
+@using BookInventory.Common
+
+@attribute [Authorize(Policy = "Admin")]
+
+<PageTitle>Book Manage</PageTitle>
+
+<h1>Book Manage</h1>
+@if(AddBookVisible)
+{
+    <BookInventory.Components.Book.CreateBook OnSubmit="@OnSubmitAddBook"></BookInventory.Components.Book.CreateBook>
+}
+
+
+<p>Book list</p>
+
+@if (books == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Status</th>
+                <th>Delete</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var book in books)
+            {
+                <tr>
+                    <td>@book.Id</td>
+                    <td>@book.Name</td>
+                    <td>@book.Author</td>
+                    <td>@book.Status</td>
+                    <td>
+                        <button id="Edit_@book.Id" class="btn btn-primary" @onclick="() => OnEditBook(book.Id)">Edit</button>
+                        <button id="Delete_@book.Id" class="btn btn-danger" @onclick="() => OnDeleteBook(book.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    [Inject]
+    protected IBookService BookService { get; set; }
+    [Inject]
+    protected NavigationManager navigationManager { get; set; }
+
+    private List<BookDto>? books { get; set; } = new List<BookDto>();
+    private bool AddBookVisible = true;
+    private bool EditBookVisible = true;
+    private BookDto SelectedBook { get; set; }
+
+    protected async Task OnSubmitAddBook()
+    {
+        await OnReloadBooks();
+    }
+
+    protected async Task OnDeleteBook(Guid bookId)
+    {
+        var result = await BookService.DeleteBook(bookId);
+        if(result)
+        {
+            await OnReloadBooks();
+        }
+
+    }
+
+    protected void OnEditBook(Guid bookId)
+    {
+        navigationManager.NavigateTo($"/editbooks/{bookId}");
+    }
+
+    protected async Task OnReloadBooks()
+    {
+        books = await BookService.GetAllBooks();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await OnReloadBooks();
+    }
+
+}
